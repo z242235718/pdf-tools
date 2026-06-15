@@ -1,0 +1,13 @@
+{
+  "name": "pdf-tools",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n BE,FE -c cyan,magenta \"cd backend && .venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --port 8001\" \"cd frontend && npm run dev\"",
+    "dev:backend": "cd backend && .venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --port 8001",
+    "dev:frontend": "cd frontend && npm run dev",
+    "postinstall": "cd frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

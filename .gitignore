@@ -10,6 +10,9 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 
+# Root tooling (concurrently)
+node_modules/
+
 # Local storage and caches
 storage/uploads/*
 storage/outputs/*

@@ -562,6 +562,96 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- WatermarkPage tabs ---- */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-item:hover {
+  color: var(--text-strong);
+}
+
+.tab-item.active {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---- WatermarkPage slider rows ---- */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.slider-row .form-label {
+  min-width: 5rem;
+  flex-shrink: 0;
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+  max-width: 240px;
+}
+
+.slider-row input[type="text"],
+.slider-row select {
+  flex: 1;
+  max-width: 240px;
+}
+
+.slider-value {
+  min-width: 3rem;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Color picker ---- */
+input[type="color"] {
+  width: 40px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  background: none;
+}
+
+/* ---- Preview area ---- */
+.preview-container {
+  margin-top: 1rem;
+  max-width: 480px;
+}
+
+.preview-title {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+  color: var(--text-strong);
+}
+
+.preview-container img {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
 /* ---- Drop zone (PdfToPngPage) ---- */
 .drop-zone {
   border: 2px dashed var(--border);

@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     max_upload_mb: int = Field(default=100, alias="MAX_UPLOAD_MB")
     max_pdf_pages: int = Field(default=500, alias="MAX_PDF_PAGES")
     max_concurrent_tasks_per_user: int = Field(default=2, alias="MAX_CONCURRENT_TASKS_PER_USER")
+    fingerprint_secret: str = Field(
+        default="dev-fingerprint-secret-do-not-use-in-prod",
+        alias="FINGERPRINT_SECRET",
+    )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

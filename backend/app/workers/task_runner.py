@@ -13,26 +13,15 @@ from app.models import Task
 from app.pdf_engines import (
     images_to_pdf,
     pdf_to_png,
+    pdf_to_word,
+    protect_pdf,
     remove_pages,
     split_pdf,
+    watermark,
 )
 from app.services.task_service import TaskService
 
 logger = logging.getLogger(__name__)
-
-
-# ---- Engine stubs (not yet implemented) --------------------------------
-
-def _run_watermark(task: Task, db: Session) -> list[int]:
-    raise NotImplementedError("watermark engine not yet implemented")
-
-
-def _run_pdf_to_word(task: Task, db: Session) -> list[int]:
-    raise NotImplementedError("pdf_to_word engine not yet implemented")
-
-
-def _run_protect_pdf(task: Task, db: Session) -> list[int]:
-    raise NotImplementedError("protect_pdf engine not yet implemented")
 
 
 _ENGINE_DISPATCH: dict[str, object] = {
@@ -40,9 +29,9 @@ _ENGINE_DISPATCH: dict[str, object] = {
     "images_to_pdf": images_to_pdf.run,
     "split_pdf": split_pdf.run,
     "remove_pdf_pages": remove_pages.run,
-    "watermark_pdf": _run_watermark,
-    "pdf_to_word": _run_pdf_to_word,
-    "protect_pdf": _run_protect_pdf,
+    "watermark_pdf": watermark.run,
+    "pdf_to_word": pdf_to_word.run,
+    "protect_pdf": protect_pdf.run,
 }
 
 

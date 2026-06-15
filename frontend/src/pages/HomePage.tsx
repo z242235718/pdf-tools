@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, FileImage, FileArchive, Scissors, Trash2, History } from 'lucide-react'
+import { FileText, FileImage, FileArchive, Scissors, Trash2, History, FileWarning, Shield, Search } from 'lucide-react'
 import { navItems } from '../components/Layout'
 
 const toolInfo: Record<string, { desc: string; icon: typeof FileText }> = {
-  '/pdf-to-png':   { desc: '将 PDF 文件按页渲染为 PNG 图片', icon: FileImage },
+  '/pdf-to-png':    { desc: '将 PDF 文件按页渲染为 PNG 图片', icon: FileImage },
   '/images-to-pdf': { desc: '将多张图片合并为一个 PDF 文件', icon: FileArchive },
-  '/split-pdf':    { desc: '按页码拆分 PDF 文件为多个文档', icon: Scissors },
-  '/remove-pages': { desc: '删除 PDF 中的指定页面', icon: Trash2 },
-  '/history':      { desc: '查看历史任务记录与下载结果', icon: History },
+  '/split-pdf':     { desc: '按页码拆分 PDF 文件为多个文档', icon: Scissors },
+  '/watermark':     { desc: '为 PDF 添加文字或图片水印', icon: FileWarning },
+  '/remove-pages':  { desc: '删除 PDF 中的指定页面', icon: Trash2 },
+  '/pdf-to-word':   { desc: '将 PDF 文件转换为 Word 文档', icon: FileText },
+  '/protect-pdf':   { desc: '为 PDF 添加可追踪的版权指纹', icon: Shield },
+  '/trace-query':   { desc: '查询 PDF 指纹溯源信息', icon: Search },
+  '/history':       { desc: '查看历史任务记录与下载结果', icon: History },
 }
 
 export default function HomePage() {

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import files, tasks
+from app.api import files, previews, tasks, trace
 
 app = FastAPI(title="PDF Tools API", version="0.1.0")
 
@@ -22,3 +22,5 @@ def health() -> dict[str, str]:
 
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
+app.include_router(previews.router, prefix="/api/previews", tags=["previews"])
+app.include_router(trace.router, prefix="/api/trace", tags=["trace"])

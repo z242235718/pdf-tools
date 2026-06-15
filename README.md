@@ -7,6 +7,39 @@
 - 本地存储：`storage/uploads`、`storage/outputs`、`storage/tmp`。
 - 执行计划：`pdf_toolbox_executable_development_plan.md`。
 
+## Quick Start（一键启动）
+
+在项目**根目录**执行一条命令即可同时启动前后端：
+
+```bash
+# 首次运行前安装依赖（已完成则跳过）
+npm install
+
+# 初始化数据库（首次或拉取更新后执行）
+cd backend && .venv\Scripts\python.exe -m alembic upgrade head && cd ..
+
+# 一键启动前后端
+npm run dev
+```
+
+启动后：
+- 🖥️ 前端：http://localhost:5173
+- ⚙️  后端 API：http://127.0.0.1:8001（通过 Vite 代理转发）
+- 🩺 健康检查：http://localhost:5173/health
+
+按 `Ctrl+C` 同时终止两个服务。
+
+也可以单独启动任一端：
+
+```bash
+npm run dev:backend   # 仅后端
+npm run dev:frontend  # 仅前端
+```
+
+---
+
+### 传统方式（分别启动）
+
 ## Backend
 
 ```powershell
