@@ -45,3 +45,17 @@ export async function listTasks(limit = 50, offset = 0): Promise<TaskResponse[]>
 export function getDownloadUrl(fileId: number): string {
   return `${BASE}/files/${fileId}/download`
 }
+
+export async function getSettings(): Promise<{ domain_url: string; password_length: number; qr_code_visible: boolean }> {
+  const res = await fetch(`${BASE}/settings`)
+  return handleResponse<{ domain_url: string; password_length: number; qr_code_visible: boolean }>(res)
+}
+
+export async function updateSettings(data: { domain_url: string; password_length: number; qr_code_visible: boolean }): Promise<{ domain_url: string; password_length: number; qr_code_visible: boolean }> {
+  const res = await fetch(`${BASE}/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return handleResponse<{ domain_url: string; password_length: number; qr_code_visible: boolean }>(res)
+}

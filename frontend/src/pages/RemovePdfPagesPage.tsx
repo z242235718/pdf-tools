@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { Upload } from 'lucide-react'
 import { uploadFile, createTask, getTask } from '../api/client'
 import type { TaskResponse } from '../types'
 
@@ -8,6 +9,36 @@ export default function RemovePdfPagesPage() {
   const [uploading, setUploading] = useState(false)
   const [task, setTask] = useState<TaskResponse | null>(null)
   const [error, setError] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleDropZoneClick = () => fileInputRef.current?.click()
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const f = e.dataTransfer.files?.[0] ?? null
+    if (f && f.type !== 'application/pdf') {
+      setError('请拖拽 PDF 文件')
+      return
+    }
+    setFile(f)
+    setTask(null)
+    setError('')
+  }
 
   const handleSubmit = async () => {
     if (!file || !deletePages) return
@@ -39,7 +70,26 @@ export default function RemovePdfPagesPage() {
 
       <div className="form-card">
         <label className="form-label">选择 PDF 文件</label>
-        <input type="file" accept=".pdf,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <div
+          className={`drop-zone${isDragging ? ' dragging' : ''}${file ? ' has-file' : ''}`}
+          onClick={handleDropZoneClick}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,application/pdf"
+            onChange={(e) => { setFile(e.target.files?.[0] ?? null); setTask(null); setError('') }}
+            hidden
+          />
+          <Upload size={24} className="drop-zone-icon" />
+          <span className="drop-zone-text">
+            {file ? file.name : '点击或拖拽 PDF 文件到此处'}
+          </span>
+        </div>
 
         <label className="form-label">要删除的页码（如 2,4-6）</label>
         <input value={deletePages} onChange={(e) => setDeletePages(e.target.value)} placeholder="2,4-6" />

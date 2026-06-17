@@ -26,12 +26,14 @@ const POSITIONS = [
 const TEXT_TILE_MODES = [
   { value: 'single', label: '单个' },
   { value: 'full', label: '全页平铺' },
+  { value: 'grid', label: '等距分布' },
   { value: 'dense', label: '密集形' },
 ]
 
 const IMAGE_TILE_MODES = [
   { value: 'single', label: '单个' },
   { value: 'full', label: '全页平铺' },
+  { value: 'grid', label: '等距分布' },
 ]
 
 export default function WatermarkPdfPage() {
@@ -56,6 +58,9 @@ export default function WatermarkPdfPage() {
   const [rotation, setRotation] = useState(-30)
   const [position, setPosition] = useState('center')
   const [tileMode, setTileMode] = useState('full')
+  const [gridAxis, setGridAxis] = useState<'x' | 'y'>('x')
+  const [gridSpacing, setGridSpacing] = useState(2.0)
+  const [tileSpacing, setTileSpacing] = useState(1.5)
   const [pageRange, setPageRange] = useState('all')
 
   // UI state
@@ -82,6 +87,9 @@ export default function WatermarkPdfPage() {
     rotation: -30,
     position: 'center',
     tileMode: 'full',
+    gridAxis: 'x' as 'x' | 'y',
+    gridSpacing: 2.0,
+    tileSpacing: 1.5,
     pageRange: 'all',
   })
 
@@ -97,13 +105,15 @@ export default function WatermarkPdfPage() {
 
   const buildParams = (): Record<string, unknown> => {
     const p = paramsRef.current
-    // invert transparency → opacity for the backend
+    // Dense mode uses raw opacity (不透明度); other modes invert transparency → opacity
     const common = {
-      opacity: 1 - p.opacity,
+      opacity: p.tileMode === 'dense' ? p.opacity : 1 - p.opacity,
       rotation: p.rotation,
       position: p.position,
       tile_mode: p.tileMode,
       page_range: p.pageRange,
+      ...(p.tileMode === 'grid' ? { grid_axis: p.gridAxis, grid_spacing: p.gridSpacing } : {}),
+      ...(p.tileMode === 'full' ? { tile_spacing: p.tileSpacing } : {}),
     }
     if (p.watermarkType === 'text') {
       return { watermark_type: 'text', text: p.text, font_size: p.fontSize, color: p.color, ...common }
@@ -290,6 +300,9 @@ export default function WatermarkPdfPage() {
     rotation,
     position,
     tileMode,
+    gridAxis,
+    gridSpacing,
+    tileSpacing,
     pageRange,
   }
 
@@ -306,6 +319,8 @@ export default function WatermarkPdfPage() {
             onClick={() => {
               setWatermarkType('text')
               setTileMode('full')
+              setFontSize(32)
+              setOpacity(0.25)
             }}
           >
             文字水印
@@ -315,6 +330,7 @@ export default function WatermarkPdfPage() {
             onClick={() => {
               setWatermarkType('image')
               setTileMode('single')
+              setOpacity(0.25)
             }}
           >
             图片水印
@@ -359,8 +375,8 @@ export default function WatermarkPdfPage() {
               <label className="form-label">字号</label>
               <input
                 type="range"
-                min={8}
-                max={120}
+                min={tileMode === 'dense' ? 4 : 8}
+                max={tileMode === 'dense' ? 12 : 120}
                 step={1}
                 value={fontSize}
                 onChange={(e) => setFontSize(Number(e.target.value))}
@@ -425,43 +441,101 @@ export default function WatermarkPdfPage() {
 
         {/* Common controls */}
         <div className="slider-row">
-          <label className="form-label">透明度</label>
+          <label className="form-label">{tileMode === 'dense' ? '不透明度' : '透明度'}</label>
           <input
             type="range"
-            min={0}
-            max={1}
-            step={0.05}
+            min={tileMode === 'dense' ? 0.02 : 0}
+            max={tileMode === 'dense' ? 0.15 : 1}
+            step={tileMode === 'dense' ? 0.01 : 0.05}
             value={opacity}
             onChange={(e) => setOpacity(Number(e.target.value))}
           />
-          <span className="slider-value">{(opacity * 100).toFixed(0)}%</span>
+          <span className="slider-value">{(opacity * 100).toFixed(tileMode === 'dense' ? 0 : 0)}%</span>
         </div>
 
-        <div className="slider-row">
-          <label className="form-label">旋转</label>
-          <input
-            type="range"
-            min={-90}
-            max={90}
-            step={1}
-            value={rotation}
-            onChange={(e) => setRotation(Number(e.target.value))}
-          />
-          <span className="slider-value">{rotation}°</span>
-        </div>
+        {tileMode !== 'dense' && (
+          <div className="slider-row">
+            <label className="form-label">旋转</label>
+            <input
+              type="range"
+              min={-90}
+              max={90}
+              step={1}
+              value={rotation}
+              onChange={(e) => setRotation(Number(e.target.value))}
+            />
+            <span className="slider-value">{rotation}°</span>
+          </div>
+        )}
 
-        <div className="slider-row">
-          <label className="form-label">位置</label>
-          <select value={position} onChange={(e) => setPosition(e.target.value)}>
-            {POSITIONS.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
-        </div>
+        {tileMode === 'single' && (
+          <div className="slider-row">
+            <label className="form-label">位置</label>
+            <select value={position} onChange={(e) => setPosition(e.target.value)}>
+              {POSITIONS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {tileMode === 'full' && (
+          <div className="slider-row">
+            <label className="form-label">密度</label>
+            <input
+              type="range"
+              min={0.8}
+              max={4.0}
+              step={0.1}
+              value={tileSpacing}
+              onChange={(e) => setTileSpacing(Number(e.target.value))}
+            />
+            <span className="slider-value">{tileSpacing.toFixed(1)}x</span>
+          </div>
+        )}
+
+        {tileMode === 'grid' && (
+          <>
+            <div className="slider-row">
+              <label className="form-label">方向</label>
+              <select value={gridAxis} onChange={(e) => setGridAxis(e.target.value as 'x' | 'y')}>
+                <option value="x">水平 (x轴)</option>
+                <option value="y">垂直 (y轴)</option>
+              </select>
+            </div>
+            <div className="slider-row">
+              <label className="form-label">间距</label>
+              <input
+                type="range"
+                min={1.0}
+                max={5.0}
+                step={0.1}
+                value={gridSpacing}
+                onChange={(e) => setGridSpacing(Number(e.target.value))}
+              />
+              <span className="slider-value">{gridSpacing.toFixed(1)}x</span>
+            </div>
+          </>
+        )}
 
         <div className="slider-row">
           <label className="form-label">平铺模式</label>
-          <select value={tileMode} onChange={(e) => setTileMode(e.target.value)}>
+          <select value={tileMode} onChange={(e) => {
+            const newMode = e.target.value
+            setTileMode(newMode)
+            if (newMode === 'dense') {
+              setFontSize(6)
+              setOpacity(0.08)
+              setRotation(0)
+            } else if (newMode === 'grid') {
+              setGridAxis('x')
+              setGridSpacing(2.0)
+            } else {
+              setFontSize(32)
+              setOpacity(0.25)
+              setRotation(-30)
+            }
+          }}>
             {(watermarkType === 'text' ? TEXT_TILE_MODES : IMAGE_TILE_MODES).map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}

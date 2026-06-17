@@ -10,6 +10,7 @@ import {
   FileText,
   Shield,
   Search,
+  Settings,
 } from 'lucide-react'
 
 export const navItems = [
@@ -48,6 +49,11 @@ export default function Layout() {
         </nav>
       </aside>
       <main className="main-content">
+        <header className="main-content-header">
+          <Link to="/settings" className="settings-btn" title="设置">
+            <Settings size={18} />
+          </Link>
+        </header>
         <Outlet />
       </main>
     </div>

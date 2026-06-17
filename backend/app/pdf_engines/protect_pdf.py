@@ -13,6 +13,7 @@ import hmac
 import io
 import json
 import logging
+import uuid
 from datetime import UTC, datetime
 
 import fitz
@@ -22,7 +23,7 @@ from pypdf.constants import UserAccessPermissions
 
 from app.config import get_settings
 from app.database import SessionLocal
-from app.models import CopyrightFingerprint, Task
+from app.models import CopyrightFingerprint, Setting, Task
 from app.pdf_engines.page_ranges import parse_page_range
 from app.services.file_service import FileService
 from app.services.naming_service import build_output_filename
@@ -49,6 +50,7 @@ def run(task: Task, db) -> list[int]:
     visible_text: str = params.get("visible_text", "")
     add_qrcode: bool = params.get("add_qrcode", True)
     set_permissions: bool = params.get("set_permissions", False)
+    set_password: bool = params.get("set_password", False)
     page_range_str: str = params.get("page_range", "all")
 
     if not visible_text:
@@ -64,6 +66,27 @@ def run(task: Task, db) -> list[int]:
         source_file_id=input_file_ids[0],
     )
 
+    # Read global settings from DB
+    domain_setting = db.query(Setting).filter(Setting.key == "domain_url").first()
+    domain_url = domain_setting.value.strip() if (domain_setting and domain_setting.value) else ""
+
+    password_length_setting = db.query(Setting).filter(Setting.key == "password_length").first()
+    password_length = int(password_length_setting.value) if (password_length_setting and password_length_setting.value) else 8
+
+    qr_visible_setting = db.query(Setting).filter(Setting.key == "qr_code_visible").first()
+    qr_code_visible = qr_visible_setting.value.lower() != "false" if (qr_visible_setting and qr_visible_setting.value) else True
+
+    # Global setting overrides per-task param: if QR is disabled globally, force it off
+    if not qr_code_visible:
+        add_qrcode = False
+
+    if domain_url:
+        qr_content = f"{domain_url}/trace-query?fp={fingerprint_id}"
+        verify_url = qr_content
+    else:
+        qr_content = fingerprint_id  # Only encode the fingerprint ID
+        verify_url = ""
+
     # ── Phase 1: Add visible watermarks via PyMuPDF ───────────────────────
     doc = fitz.open(stream=pdf_data, filetype="pdf")
     try:
@@ -74,7 +97,7 @@ def run(task: Task, db) -> list[int]:
         page_indices = parse_page_range(page_range_str, total_pages)
 
         # Generate QR code pixmap once if needed
-        qr_pix = _generate_qr_pixmap(fingerprint_id) if add_qrcode else None
+        qr_pix = _generate_qr_pixmap(qr_content) if add_qrcode else None
 
         for idx in page_indices:
             page = doc.load_page(idx)
@@ -83,7 +106,7 @@ def run(task: Task, db) -> list[int]:
                 _add_qr_code(page, qr_pix)
 
         buf = io.BytesIO()
-        doc.save(buf, garbage=4, deflate=True)
+        doc.save(buf, garbage=3, deflate=True)
         pdf_watermarked = buf.getvalue()
     finally:
         doc.close()
@@ -100,13 +123,19 @@ def run(task: Task, db) -> list[int]:
         "/fingerprint_created": datetime.now(UTC).isoformat(),
     })
 
-    if set_permissions:
-        # Owner password = fingerprint_secret, user password = fingerprint_id
+    # Generate random password if password protection is enabled
+    password = uuid.uuid4().hex[:password_length] if set_password else ""
+    has_password = bool(password)
+    needs_encryption = set_permissions or has_password
+
+    if needs_encryption:
         settings = get_settings()
+        user_pw = password if has_password else ""
+        perm_flag = UserAccessPermissions(0) if set_permissions else UserAccessPermissions.ALL
         writer.encrypt(
-            user_password=fingerprint_id,
+            user_password=user_pw,
             owner_password=settings.fingerprint_secret,
-            permissions_flag=UserAccessPermissions.PRINT | UserAccessPermissions.EXTRACT,
+            permissions_flag=perm_flag,
         )
 
     pdf_final_buf = io.BytesIO()
@@ -134,9 +163,8 @@ def run(task: Task, db) -> list[int]:
         storage_key=key,
     )
 
-    # ── Phase 4: Record fingerprint ───────────────────────────────────────
+    # ── Phase 4: Record fingerprint & result metadata ───────────────────────
     settings = get_settings()
-    verify_url = f"http://localhost:5173/trace-query?fp={fingerprint_id}"
 
     fp_record = CopyrightFingerprint(
         fingerprint_id=fingerprint_id,
@@ -149,6 +177,14 @@ def run(task: Task, db) -> list[int]:
         verify_url=verify_url,
     )
     db.add(fp_record)
+
+    # Write result metadata so the user can see the password
+    task.result_info = json.dumps({
+        "fingerprint_id": fingerprint_id,
+        "password": password if has_password else None,
+        "has_permissions": set_permissions,
+    })
+
     db.commit()
 
     logger.info(
@@ -219,10 +255,9 @@ def _generate_fingerprint(
     return fingerprint_id, signed_payload
 
 
-def _generate_qr_pixmap(fingerprint_id: str) -> fitz.Pixmap:
-    """Generate a QR code Pixmap encoding the verification URL."""
-    verify_url = f"http://localhost:5173/trace-query?fp={fingerprint_id}"
-    qr_img = qrcode.make(verify_url, box_size=4, border=1)
+def _generate_qr_pixmap(content: str) -> fitz.Pixmap:
+    """Generate a QR code Pixmap encoding the given content string."""
+    qr_img = qrcode.make(content, box_size=4, border=1)
     buf = io.BytesIO()
     qr_img.save(buf, format="PNG")
     return fitz.Pixmap(buf.getvalue())
@@ -249,7 +284,7 @@ def _add_footer_watermark(
         fontname=fontname,
         fontsize=_FOOTER_FONTSIZE,
         color=(0.5, 0.5, 0.5),
-        fill_opacity=0.6,
+        fill_opacity=0.02,
         overlay=True,
     )
 

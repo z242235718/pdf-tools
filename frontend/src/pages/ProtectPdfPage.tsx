@@ -9,6 +9,7 @@ export default function ProtectPdfPage() {
   const [addQrcode, setAddQrcode] = useState(true)
   const [setPermissions, setSetPermissions] = useState(false)
   const [pageRange, setPageRange] = useState('all')
+  const [setPassword, setSetPassword] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [task, setTask] = useState<TaskResponse | null>(null)
   const [error, setError] = useState('')
@@ -69,6 +70,7 @@ export default function ProtectPdfPage() {
         add_qrcode: addQrcode,
         set_permissions: setPermissions,
         page_range: pageRange,
+        set_password: setPassword,
       })
       setTask(created)
 
@@ -156,6 +158,17 @@ export default function ProtectPdfPage() {
           </label>
         </div>
 
+        <div className="checkbox-row">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={setPassword}
+              onChange={(e) => setSetPassword(e.target.checked)}
+            />
+            开启密码保护（生成随机密码）
+          </label>
+        </div>
+
         <button
           className="btn"
           disabled={!file || !visibleText.trim() || uploading}
@@ -194,9 +207,23 @@ export default function ProtectPdfPage() {
               下载受保护的 PDF
             </a>
           )}
+          {task.status === 'succeeded' && task.result_info?.password && (
+            <div className="password-card">
+              <p className="form-label">打开密码</p>
+              <p className="password-value">
+                {String(task.result_info.password)}
+              </p>
+              <p className="text-muted" style={{ fontSize: 13 }}>
+                此 PDF 已加密保护，打开时需输入上方密码。请妥善保存，密码不会再次显示。
+              </p>
+            </div>
+          )}
           {task.status === 'succeeded' && (
             <p className="text-muted" style={{ marginTop: 8, fontSize: 13 }}>
-              指纹 ID 已嵌入文件元数据。可前往
+              指纹 ID：{task.result_info?.fingerprint_id
+                ? String(task.result_info.fingerprint_id)
+                : '—'}{' '}
+              已嵌入文件元数据。可前往
               <a href="/trace-query"> 溯源查询 </a>
               页面验证。
             </p>

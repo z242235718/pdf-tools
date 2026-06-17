@@ -25,6 +25,7 @@ export interface TaskResponse {
   error_code: string | null
   error_message: string | null
   warnings: string[]
+  result_info: Record<string, unknown>
   output_files: TaskOutputFile[]
   created_at: string | null
   started_at: string | null

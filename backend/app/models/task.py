@@ -49,6 +49,9 @@ class Task(Base):
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     warnings: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array
+    result_info: Mapped[str | None] = mapped_column(
+        Text, nullable=True, default=None
+    )  # JSON dict — tool-specific result metadata
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), server_default=func.now(), nullable=False
     )

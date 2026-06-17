@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, ChevronUp, ChevronDown } from 'lucide-react'
+import { X, ChevronUp, ChevronDown, Upload } from 'lucide-react'
 import { uploadFile, createTask, getTask } from '../api/client'
 import type { TaskResponse, ImageItem } from '../types'
 
@@ -10,6 +10,7 @@ export default function ImagesToPdfPage() {
   const [error, setError] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
+  const [isDragging, setIsDragging] = useState(false)
   const dragIndexRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -25,6 +26,48 @@ export default function ImagesToPdfPage() {
     }
   }, [])
 
+  // ── Drop-zone handlers for file selection ────────────────────────────────
+  const handleFileDropZoneClick = () => fileInputRef.current?.click()
+
+  const handleFileDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleFileDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleFileDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+    // Validate that all files are images
+    for (const f of Array.from(files)) {
+      if (!f.type.startsWith('image/')) {
+        setError('请拖拽图片文件')
+        return
+      }
+    }
+    // Revoke previous previews
+    imageItems.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+
+    const items: ImageItem[] = Array.from(files).map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }))
+    setImageItems(items)
+    setTask(null)
+    setError('')
+  }
+
+  // ── Thumbnail reorder handlers (unchanged) ───────────────────────────────
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
@@ -82,12 +125,12 @@ export default function ImagesToPdfPage() {
     dragIndexRef.current = index
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleThumbDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleThumbDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
     const fromIndex = dragIndexRef.current
     if (fromIndex === null || fromIndex === dropIndex) return
@@ -139,13 +182,27 @@ export default function ImagesToPdfPage() {
 
       <div className="form-card form-card-wide">
         <label className="form-label">选择图片</label>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleFileSelect}
-        />
+        <div
+          className={`drop-zone${isDragging ? ' dragging' : ''}${imageItems.length > 0 ? ' has-file' : ''}`}
+          onClick={handleFileDropZoneClick}
+          onDragEnter={handleFileDragEnter}
+          onDragOver={handleFileDragOver}
+          onDragLeave={handleFileDragLeave}
+          onDrop={handleFileDrop}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileSelect}
+            hidden
+          />
+          <Upload size={24} className="drop-zone-icon" />
+          <span className="drop-zone-text">
+            {imageItems.length > 0 ? `已选择 ${imageItems.length} 张图片` : '点击或拖拽图片文件到此处'}
+          </span>
+        </div>
 
         {imageItems.length > 0 && (
           <div className="image-grid">
@@ -155,8 +212,8 @@ export default function ImagesToPdfPage() {
                 className="image-thumb"
                 draggable
                 onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, index)}
+                onDragOver={handleThumbDragOver}
+                onDrop={(e) => handleThumbDrop(e, index)}
                 onDragEnd={handleDragEnd}
               >
                 <img src={item.previewUrl} alt={item.file.name} onClick={() => setPreviewUrl(item.previewUrl)} />

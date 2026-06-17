@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listTasks } from '../api/client'
+import { formatTime } from '../utils/formatTime'
 import type { TaskResponse } from '../types'
 
 export default function HistoryPage() {
@@ -40,7 +41,7 @@ export default function HistoryPage() {
               <td>
                 <span className={`status-badge status-${t.status}`}>{t.status}</span>
               </td>
-              <td>{t.created_at ?? '-'}</td>
+              <td>{formatTime(t.created_at)}</td>
               <td>
                 <Link to={`/task/${t.task_id}`}>查看详情</Link>
               </td>

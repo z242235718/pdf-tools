@@ -38,7 +38,7 @@ _POSITIONS: dict[str, tuple[float, float]] = {
 
 _TILE_SPACING: dict[str, tuple[float, float]] = {
     "full":  (1.5, 2.0),
-    "dense": (1.1, 1.2),
+    "dense": (1.2, 1.5),
 }
 
 
@@ -74,8 +74,7 @@ def run(task: Task, db) -> list[int]:
             raise exc
 
         if watermark_type == "text":
-            for idx in page_indices:
-                _apply_text_watermark(doc.load_page(idx), params)
+            _apply_text_watermarks_to_doc(doc, page_indices, params)
         else:
             # Image watermark — load via Pillow for format-agnostic handling
             wm_file_id = params.get("watermark_file_id")
@@ -84,13 +83,12 @@ def run(task: Task, db) -> list[int]:
             image_data = _load_file_bytes(wm_file_id)
             pix = _img_bytes_to_pixmap(image_data)
             try:
-                for idx in page_indices:
-                    _apply_image_watermark(doc.load_page(idx), pix, params)
+                _apply_image_watermarks_to_doc(doc, page_indices, pix, params)
             finally:
                 pix = None
 
         pdf_bytes_buf = io.BytesIO()
-        doc.save(pdf_bytes_buf, garbage=4, deflate=True)
+        doc.save(pdf_bytes_buf, garbage=3, deflate=True)
         pdf_data_out = pdf_bytes_buf.getvalue()
     finally:
         doc.close()
@@ -235,9 +233,17 @@ def _calc_tile_positions(
     item_w: float,
     item_h: float,
     tile_mode: str,
+    tile_spacing: tuple[float, float] | None = None,
 ) -> list[tuple[float, float]]:
-    """Return list of top‑left positions for tiled watermarks."""
-    sx, sy = _TILE_SPACING.get(tile_mode, (1.5, 2.0))
+    """Return list of top‑left positions for tiled watermarks.
+
+    ``tile_spacing`` overrides the hardcoded ``_TILE_SPACING`` values (used
+    when the user adjusts the "全页平铺" density slider).
+    """
+    if tile_spacing is not None:
+        sx, sy = tile_spacing
+    else:
+        sx, sy = _TILE_SPACING.get(tile_mode, (1.5, 2.0))
     pw, ph = page_rect.width, page_rect.height
 
     positions: list[tuple[float, float]] = []
@@ -259,6 +265,135 @@ def _calc_tile_positions(
     return positions
 
 
+def _calc_grid_positions(
+    page_rect: fitz.Rect,
+    item_w: float,
+    item_h: float,
+    grid_axis: str,
+    grid_spacing: float,
+) -> list[tuple[float, float]]:
+    """Return equidistant positions for grid‑mode watermarks.
+
+    ``grid_axis="x"`` — items flow in horizontal rows (tighter horizontally).
+    ``grid_axis="y"`` — items flow in vertical columns (tighter vertically).
+    ``grid_spacing`` is a multiplier (1.0–5.0) controlling the gap between items.
+    """
+    pw, ph = page_rect.width, page_rect.height
+
+    # Primary axis uses grid_spacing; secondary axis adds 50% extra room
+    if grid_axis == "y":
+        sx, sy = grid_spacing * 1.5, grid_spacing
+    else:
+        sx, sy = grid_spacing, grid_spacing * 1.5
+
+    step_x = item_w * sx
+    step_y = item_h * sy
+
+    cols = max(1, round(pw / step_x))
+    rows = max(1, round(ph / step_y))
+
+    # Centre the grid on the page
+    total_w = (cols - 1) * step_x + item_w
+    total_h = (rows - 1) * step_y + item_h
+    start_x = (pw - total_w) / 2
+    start_y = (ph - total_h) / 2
+
+    positions: list[tuple[float, float]] = []
+    for r in range(rows):
+        for c in range(cols):
+            positions.append((start_x + c * step_x, start_y + r * step_y))
+    return positions
+
+
+def _apply_text_watermarks_to_doc(
+    doc: fitz.Document,
+    page_indices: list[int],
+    params: dict,
+) -> None:
+    """Apply text watermarks to multiple pages efficiently.
+
+    For tiled modes (full / dense) with uniform page sizes, a single overlay
+    page is built once and stamped onto every target page via
+    ``show_pdf_page()`` — dramatically reducing ``insert_text`` calls for
+    multi‑page PDFs.
+    """
+    tile_mode = params.get("tile_mode", "full")
+
+    if tile_mode == "single":
+        # Single position: direct insertion per page
+        for idx in page_indices:
+            _apply_text_watermark(doc.load_page(idx), params)
+        return
+
+    # Tiled mode — build overlay once if all pages share the same dimensions
+    first_rect = doc.load_page(page_indices[0]).rect
+    same_size = all(
+        abs(doc.load_page(idx).rect.width - first_rect.width) < 1
+        and abs(doc.load_page(idx).rect.height - first_rect.height) < 1
+        for idx in page_indices
+    )
+
+    if same_size:
+        overlay_doc = fitz.open()
+        overlay_page = overlay_doc.new_page(
+            width=first_rect.width,
+            height=first_rect.height,
+        )
+        _apply_text_watermark(overlay_page, params)
+
+        for idx in page_indices:
+            page = doc.load_page(idx)
+            page.show_pdf_page(page.rect, overlay_doc, 0, overlay=True)
+
+        overlay_doc.close()
+    else:
+        # Different page sizes — fall back to per‑page direct insertion
+        for idx in page_indices:
+            _apply_text_watermark(doc.load_page(idx), params)
+
+
+def _apply_image_watermarks_to_doc(
+    doc: fitz.Document,
+    page_indices: list[int],
+    pix: fitz.Pixmap,
+    params: dict,
+) -> None:
+    """Apply image watermarks to multiple pages efficiently.
+
+    Same overlay‑stamp strategy as ``_apply_text_watermarks_to_doc``.
+    """
+    tile_mode = params.get("tile_mode", "single")
+
+    if tile_mode == "single":
+        for idx in page_indices:
+            _apply_image_watermark(doc.load_page(idx), pix, params)
+        return
+
+    first_rect = doc.load_page(page_indices[0]).rect
+    same_size = all(
+        abs(doc.load_page(idx).rect.width - first_rect.width) < 1
+        and abs(doc.load_page(idx).rect.height - first_rect.height) < 1
+        for idx in page_indices
+    )
+
+    if same_size:
+        overlay_doc = fitz.open()
+        overlay_page = overlay_doc.new_page(
+            width=first_rect.width,
+            height=first_rect.height,
+        )
+        _apply_image_watermark(overlay_page, pix, params)
+
+        for idx in page_indices:
+            page = doc.load_page(idx)
+            page.show_pdf_page(page.rect, overlay_doc, 0, overlay=True)
+
+        overlay_doc.close()
+    else:
+        for idx in page_indices:
+            _apply_image_watermark(doc.load_page(idx), pix, params)
+
+
 def _apply_text_watermark(page: fitz.Page, params: dict) -> None:
     """Apply a text watermark to *page*.
 
@@ -273,6 +408,12 @@ def _apply_text_watermark(page: fitz.Page, params: dict) -> None:
     position = params.get("position", "center")
     tile_mode = params.get("tile_mode", "full")
 
+    # Dense mode: cap font size to keep watermarks tiny, force no rotation
+    # Opacity is NOT overridden — user controls it via the constrained slider
+    if tile_mode == "dense":
+        fontsize = min(fontsize, 10)
+        rotation = 0
+
     rgb = _hex_to_rgb(color_hex)
     fontname = _pick_font(text)
     rect = page.rect
@@ -281,6 +422,15 @@ def _apply_text_watermark(page: fitz.Page, params: dict) -> None:
 
     if tile_mode == "single":
         positions = [_calc_single_position(rect, text_w, text_h, position)]
+    elif tile_mode == "grid":
+        positions = _calc_grid_positions(
+            rect, text_w, text_h,
+            params.get("grid_axis", "x"),
+            params.get("grid_spacing", 2.0),
+        )
+    elif tile_mode == "full" and "tile_spacing" in params:
+        sp = params.get("tile_spacing", 1.5)
+        positions = _calc_tile_positions(rect, text_w, text_h, tile_mode, (sp, sp))
     else:
         positions = _calc_tile_positions(rect, text_w, text_h, tile_mode)
 
@@ -322,10 +472,10 @@ def _pil_rotate_pixmap(pix: fitz.Pixmap, angle: float) -> fitz.Pixmap:
 def _apply_image_watermark(page: fitz.Page, pix: fitz.Pixmap, params: dict) -> None:
     """Apply an image watermark to *page*.
 
-    PyMuPDF's ``insert_image(rotate=…)`` only supports 0/90/180/270, so for
-    arbitrary rotation angles we pre‑rotate via Pillow.  The ``alpha``
-    parameter of ``insert_image`` is a dead arg in PyMuPDF 1.27.x, so
-    opacity is also baked into the pixmap alpha channel via PIL.
+    Watermark size is calculated relative to the page: ``scale`` is the
+    fraction of page width that the watermark occupies (e.g. 0.5 = 50%).
+    PIL processing is used for rotation and opacity (PyMuPDF's ``alpha``
+    and ``rotate`` parameters are limited).
     """
     scale = params.get("scale", 0.5)
     opacity = params.get("opacity", 0.25)
@@ -333,25 +483,17 @@ def _apply_image_watermark(page: fitz.Page, pix: fitz.Pixmap, params: dict) -> N
     position = params.get("position", "center")
     tile_mode = params.get("tile_mode", "single")
 
-    # PIL processing is needed when any of scale / rotation / opacity
-    # differs from the identity (we cannot rely on PyMuPDF's alpha param).
-    needs_pil = scale != 1.0 or rotation != 0 or opacity < 1.0
+    # PIL processing for rotation + opacity (NOT scale — rect handles sizing)
+    needs_pil = rotation != 0 or opacity < 1.0
 
     if needs_pil:
         mode = "RGBA" if pix.alpha else "RGB"
         img = Image.frombuffer(mode, (pix.width, pix.height), pix.samples, "raw", mode, 0, 1)
 
-        if scale != 1.0:
-            w = max(1, int(pix.width * scale))
-            h = max(1, int(pix.height * scale))
-            img = img.resize((w, h), Image.BICUBIC)
-
         if rotation != 0:
             img = img.rotate(rotation, expand=True, resample=Image.BICUBIC)
 
         if opacity < 1.0:
-            # Apply opacity through the alpha channel (PyMuPDF's alpha=
-            # parameter is ignored in practice).
             if img.mode != "RGBA":
                 img = img.convert("RGBA")
             alpha = img.getchannel("A")
@@ -362,17 +504,30 @@ def _apply_image_watermark(page: fitz.Page, pix: fitz.Pixmap, params: dict) -> N
         img.save(buf, format="PNG")
         pix = fitz.Pixmap(buf.getvalue())
 
+    # ── Page‑relative watermark sizing (PDF points) ──────────────────────
+    page_w, page_h = page.rect.width, page.rect.height
+    wm_w = page_w * scale
+    wm_h = wm_w * (pix.height / pix.width)  # maintain aspect ratio
+
     rect = page.rect
-    img_w, img_h = pix.width, pix.height
 
     if tile_mode == "single":
-        positions = [_calc_single_position(rect, img_w, img_h, position)]
+        positions = [_calc_single_position(rect, wm_w, wm_h, position)]
+    elif tile_mode == "grid":
+        positions = _calc_grid_positions(
+            rect, wm_w, wm_h,
+            params.get("grid_axis", "x"),
+            params.get("grid_spacing", 2.0),
+        )
+    elif tile_mode == "full" and "tile_spacing" in params:
+        sp = params.get("tile_spacing", 1.5)
+        positions = _calc_tile_positions(rect, wm_w, wm_h, tile_mode, (sp, sp))
     else:
-        positions = _calc_tile_positions(rect, img_w, img_h, tile_mode)
+        positions = _calc_tile_positions(rect, wm_w, wm_h, tile_mode)
 
     for x, y in positions:
         page.insert_image(
-            rect=fitz.Rect(x, y, x + img_w, y + img_h),
+            rect=fitz.Rect(x, y, x + wm_w, y + wm_h),
             pixmap=pix,
             overlay=True,
             keep_proportion=True,

@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Search, ExternalLink } from 'lucide-react'
+import { formatTime } from '../utils/formatTime'
 
 interface TraceResult {
   fingerprint_id: string
@@ -12,11 +14,44 @@ interface TraceResult {
   created_at: string | null
 }
 
+async function fetchTrace(fp: string): Promise<TraceResult> {
+  const res = await fetch('/api/trace/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fingerprint_id: fp }),
+  })
+  if (!res.ok) {
+    if (res.status === 404) throw new Error('未找到该指纹记录')
+    throw new Error(`查询失败 (${res.status})`)
+  }
+  return res.json()
+}
+
 export default function TraceQueryPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [fp, setFp] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<TraceResult | null>(null)
   const [error, setError] = useState('')
+  const hasAutoQueried = useRef(false)
+
+  // Auto-query from URL ?fp=xxx on mount
+  useEffect(() => {
+    const initialFp = searchParams.get('fp')
+    if (initialFp && !hasAutoQueried.current) {
+      hasAutoQueried.current = true
+      setFp(initialFp)
+      setLoading(true)
+      setError('')
+      fetchTrace(initialFp)
+        .then((data) => setResult(data))
+        .catch((err) => setError(err instanceof Error ? err.message : '查询失败'))
+        .finally(() => {
+          setLoading(false)
+          setSearchParams({}) // Clear URL param
+        })
+    }
+  }, [searchParams, setSearchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,16 +60,7 @@ export default function TraceQueryPage() {
     setResult(null)
     setLoading(true)
     try {
-      const res = await fetch('/api/trace/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fingerprint_id: fp.trim() }),
-      })
-      if (!res.ok) {
-        if (res.status === 404) throw new Error('未找到该指纹记录')
-        throw new Error(`查询失败 (${res.status})`)
-      }
-      const data: TraceResult = await res.json()
+      const data = await fetchTrace(fp.trim())
       setResult(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : '查询失败')
@@ -85,7 +111,7 @@ export default function TraceQueryPage() {
               </tr>
               <tr>
                 <td className="trace-label">生成时间</td>
-                <td className="trace-value">{result.created_at ?? '-'}</td>
+                <td className="trace-value">{formatTime(result.created_at)}</td>
               </tr>
               <tr>
                 <td className="trace-label">关联任务</td>

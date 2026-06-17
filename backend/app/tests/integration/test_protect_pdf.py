@@ -111,7 +111,7 @@ class TestProtectPdf:
         assert trace_data["source_file_id"] == pdf_id
 
     def test_protect_pdf_with_permissions(self, client: TestClient, pdf_bytes: bytes) -> None:
-        """With set_permissions=True, the output PDF should be encrypted."""
+        """With set_permissions=True + set_password=True, the output PDF should be encrypted and password returned."""
         pdf_id = _upload(client, pdf_bytes)
 
         task_resp = client.post("/api/tasks", json={
@@ -121,17 +121,62 @@ class TestProtectPdf:
                 "visible_text": "授权给：王五",
                 "set_permissions": True,
                 "add_qrcode": False,
+                "set_password": True,
             },
         })
         done = _wait_for_task(client, task_resp.json()["task_id"])
         assert done["status"] == "succeeded"
 
+        # Verify result_info contains fingerprint_id, has_permissions, and auto-generated password
+        result_info = done.get("result_info", {})
+        assert result_info.get("fingerprint_id") is not None
+        assert result_info.get("has_permissions") is True
+        assert result_info.get("password") is not None, "password should be auto-generated when set_password=True"
+        assert len(str(result_info.get("password"))) == 8, "password should be 8 chars"
+
         out = done["output_files"][0]
         dl = client.get(out["download_url"])
 
-        # Try opening without password — should need one
+        # Verify PDF is encrypted with the auto-generated password
         reader = PdfReader(io.BytesIO(dl.content))
         assert reader.is_encrypted, "PDF should be encrypted when set_permissions=True"
+
+        # Can open with the password
+        reader2 = PdfReader(io.BytesIO(dl.content), password=str(result_info["password"]))
+        assert len(reader2.pages) == 3
+
+    def test_protect_pdf_permissions_only_no_password(self, client: TestClient, pdf_bytes: bytes) -> None:
+        """With set_permissions=True but no password, PDF should be encrypted with empty password (no prompt)."""
+        pdf_id = _upload(client, pdf_bytes)
+
+        task_resp = client.post("/api/tasks", json={
+            "tool_type": "protect_pdf",
+            "input_file_ids": [pdf_id],
+            "params": {
+                "visible_text": "授权给：赵六",
+                "set_permissions": True,
+                "add_qrcode": False,
+            },
+        })
+        done = _wait_for_task(client, task_resp.json()["task_id"])
+        assert done["status"] == "succeeded"
+
+        # Verify result_info: has_permissions=True, but password is None
+        result_info = done.get("result_info", {})
+        assert result_info.get("fingerprint_id") is not None
+        assert result_info.get("has_permissions") is True
+        assert result_info.get("password") is None
+
+        out = done["output_files"][0]
+        dl = client.get(out["download_url"])
+
+        # Should be encrypted
+        reader = PdfReader(io.BytesIO(dl.content))
+        assert reader.is_encrypted, "PDF should be encrypted when set_permissions=True"
+
+        # Should open with empty password (no prompt in most viewers)
+        reader2 = PdfReader(io.BytesIO(dl.content), password="")
+        assert len(reader2.pages) == 3
 
     def test_trace_query_not_found(self, client: TestClient) -> None:
         """Querying a non-existent fingerprint should return 404."""
