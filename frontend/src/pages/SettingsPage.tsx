@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Save } from 'lucide-react'
-import { getSettings, updateSettings } from '../api/client'
+import { Save, AlertTriangle, Type, Menu } from 'lucide-react'
+import { getSettings, updateSettings, clearTasks } from '../api/client'
 
 export default function SettingsPage() {
   const [domainUrl, setDomainUrl] = useState('')
@@ -9,6 +9,18 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [showClearModal, setShowClearModal] = useState(false)
+  const [clearConfirmText, setClearConfirmText] = useState('')
+  const [clearing, setClearing] = useState(false)
+  const [clearMessage, setClearMessage] = useState('')
+
+  const [fontSize, setFontSize] = useState(() => {
+    return parseInt(localStorage.getItem('ui_font_size') || '14')
+  })
+
+  const [sidebarFontSize, setSidebarFontSize] = useState(() => {
+    return parseInt(localStorage.getItem('sidebar_font_size') || '14')
+  })
 
   useEffect(() => {
     getSettings()
@@ -31,6 +43,21 @@ export default function SettingsPage() {
       setMessage(err instanceof Error ? `❌ ${err.message}` : '❌ 保存失败')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleClearConfirm = async () => {
+    setClearing(true)
+    setClearMessage('')
+    try {
+      await clearTasks()
+      setClearMessage('✅ 历史记录已清空')
+      setShowClearModal(false)
+      setClearConfirmText('')
+    } catch (err) {
+      setClearMessage(err instanceof Error ? `❌ ${err.message}` : '❌ 清空失败')
+    } finally {
+      setClearing(false)
     }
   }
 
@@ -93,6 +120,116 @@ export default function SettingsPage() {
 
         {message && <p className="text-muted" style={{ marginTop: 8 }}>{message}</p>}
       </div>
+
+      {/* ── Font size ── */}
+      <div className="form-card" style={{ marginTop: '1rem' }}>
+        <label className="form-label">
+          <Type size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          界面字体大小
+        </label>
+        <div className="font-size-control">
+          <input
+            type="range"
+            min={12}
+            max={20}
+            step={1}
+            value={fontSize}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              setFontSize(v)
+              localStorage.setItem('ui_font_size', String(v))
+              document.documentElement.style.setProperty('--font-size', v + 'px')
+            }}
+          />
+          <span className="font-size-value">{fontSize}px</span>
+        </div>
+        <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
+          调整左侧菜单栏和主界面内容的字体大小（12px – 20px），实时生效。
+        </p>
+      </div>
+
+      {/* ── Sidebar font size ── */}
+      <div className="form-card" style={{ marginTop: '1rem' }}>
+        <label className="form-label">
+          <Menu size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          菜单栏字体大小
+        </label>
+        <div className="font-size-control">
+          <input
+            type="range"
+            min={12}
+            max={20}
+            step={1}
+            value={sidebarFontSize}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              setSidebarFontSize(v)
+              localStorage.setItem('sidebar_font_size', String(v))
+              document.documentElement.style.setProperty('--sidebar-font-size', v + 'px')
+            }}
+          />
+          <span className="font-size-value">{sidebarFontSize}px</span>
+        </div>
+        <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
+          单独调整左侧菜单栏的字体大小（12px – 20px），实时生效。
+        </p>
+      </div>
+
+      {/* ── Clear history ── */}
+      <div className="form-card" style={{ marginTop: '1rem' }}>
+        <details>
+          <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-strong)' }}>
+            清空历史记录
+          </summary>
+          <p className="text-muted" style={{ marginTop: '0.75rem' }}>
+            清空所有最近处理的任务列表。此操作不可恢复。
+          </p>
+          <button
+            className="btn-danger"
+            onClick={() => setShowClearModal(true)}
+            type="button"
+          >
+            <AlertTriangle size={16} style={{ marginRight: 6 }} />
+            清空历史记录
+          </button>
+          {clearMessage && <p className="text-muted" style={{ marginTop: 8 }}>{clearMessage}</p>}
+        </details>
+      </div>
+
+      {/* ── Clear confirmation modal ── */}
+      {showClearModal && (
+        <div className="modal-overlay" onClick={() => { if (!clearing) setShowClearModal(false) }}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3>清空历史记录</h3>
+            <p>注意：此操作会清空所有最近处理的任务列表，且日后无法找回。请考虑好后在操作</p>
+            <input
+              type="text"
+              value={clearConfirmText}
+              onChange={(e) => setClearConfirmText(e.target.value)}
+              placeholder="请输入：我确认要清空历史记录"
+              disabled={clearing}
+            />
+            <div className="modal-actions">
+              <button
+                className="btn-cancel"
+                onClick={() => { setShowClearModal(false); setClearConfirmText('') }}
+                disabled={clearing}
+                type="button"
+              >
+                取消
+              </button>
+              <button
+                className="btn-danger"
+                disabled={clearConfirmText !== '我确认要清空历史记录' || clearing}
+                onClick={handleClearConfirm}
+                type="button"
+              >
+                {clearing ? '清空中...' : '确认清空'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

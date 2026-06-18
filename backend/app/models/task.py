@@ -30,6 +30,8 @@ class Task(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    task_name: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    input_file_names: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     tool_type: Mapped[ToolType] = mapped_column(
         Enum(ToolType, name="tool_type"), nullable=False
     )

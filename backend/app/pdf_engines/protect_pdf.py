@@ -147,7 +147,6 @@ def run(task: Task, db) -> list[int]:
     now = datetime.now(UTC)
     output_name = build_output_filename(
         original_name,
-        suffix="protected",
         extension="pdf",
         timestamp=now,
         extra=fingerprint_id,

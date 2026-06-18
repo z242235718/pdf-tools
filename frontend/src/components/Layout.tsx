@@ -54,7 +54,12 @@ export default function Layout() {
             <Settings size={18} />
           </Link>
         </header>
-        <Outlet />
+        <div className="main-content-body">
+          <Outlet />
+        </div>
+        <footer className="app-footer">
+          <p>© {new Date().getFullYear()} <a href="https://github.com/z242235718/pdf-tools" target="_blank" rel="noopener noreferrer">w2422</a> · 保留所有权利</p>
+        </footer>
       </main>
     </div>
   )

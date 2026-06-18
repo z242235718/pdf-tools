@@ -129,7 +129,6 @@ def _lossless_encapsulate(
     pdf_bytes = img2pdf.convert(images_data)
     output_name = build_output_filename(
         original_name,
-        suffix="images",
         extension="pdf",
         timestamp=now,
     )
@@ -160,7 +159,6 @@ def _pillow_render(
     pdf_bytes = buf.getvalue()
     output_name = build_output_filename(
         original_name,
-        suffix="images",
         extension="pdf",
         timestamp=now,
     )

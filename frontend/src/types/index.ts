@@ -17,8 +17,14 @@ export interface TaskOutputFile {
   filename: string
 }
 
+export interface TaskInputFile {
+  file_id: number
+  original_name: string
+}
+
 export interface TaskResponse {
   task_id: number
+  task_name: string
   status: 'pending' | 'running' | 'succeeded' | 'failed' | 'expired'
   tool_type: string
   progress: number
@@ -27,9 +33,15 @@ export interface TaskResponse {
   warnings: string[]
   result_info: Record<string, unknown>
   output_files: TaskOutputFile[]
+  input_files: TaskInputFile[]
   created_at: string | null
   started_at: string | null
   finished_at: string | null
+}
+
+export interface TaskListResponse {
+  items: TaskResponse[]
+  total: number
 }
 
 export type ToolType =

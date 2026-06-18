@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import files, previews, settings, tasks, trace
-from app.database import SessionLocal
+from app.database import Base, SessionLocal, engine
 from app.models import Task, TaskStatus
 from app.services.task_service import TaskService
 
@@ -19,7 +19,13 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-def recover_stale_tasks() -> None:
+def on_startup() -> None:
+    """Create tables and recover stale tasks on server start."""
+    Base.metadata.create_all(bind=engine)
+    _recover_stale_tasks()
+
+
+def _recover_stale_tasks() -> None:
     """Mark tasks stuck in 'running' status as 'failed' on server restart.
 
     Background tasks can be killed by uvicorn --reload or process restarts,

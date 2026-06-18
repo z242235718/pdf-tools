@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Upload } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { uploadFile, createTask, getTask } from '../api/client'
 import type { TaskResponse } from '../types'
 
@@ -40,6 +40,13 @@ export default function SplitPdfPage() {
     setError('')
   }
 
+  const handleClearFile = () => {
+    setFile(null)
+    setTask(null)
+    setError('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const handleSubmit = async () => {
     if (!file) return
     setError('')
@@ -70,25 +77,35 @@ export default function SplitPdfPage() {
 
       <div className="form-card">
         <label className="form-label">选择 PDF 文件</label>
-        <div
-          className={`drop-zone${isDragging ? ' dragging' : ''}${file ? ' has-file' : ''}`}
-          onClick={handleDropZoneClick}
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={(e) => { setFile(e.target.files?.[0] ?? null); setTask(null); setError('') }}
-            hidden
-          />
-          <Upload size={24} className="drop-zone-icon" />
-          <span className="drop-zone-text">
-            {file ? file.name : '点击或拖拽 PDF 文件到此处'}
-          </span>
+        <div className="drop-zone-wrap">
+          <div
+            className={`drop-zone${isDragging ? ' dragging' : ''}${file ? ' has-file' : ''}`}
+            onClick={handleDropZoneClick}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={(e) => { setFile(e.target.files?.[0] ?? null); setTask(null); setError('') }}
+              hidden
+            />
+            <Upload size={24} className="drop-zone-icon" />
+            <span className="drop-zone-text">
+              {file ? file.name : '点击或拖拽 PDF 文件到此处'}
+            </span>
+          </div>
+          <button
+            className={`drop-zone-remove${file ? ' visible' : ''}`}
+            onClick={handleClearFile}
+            title="移除文件"
+            type="button"
+          >
+            <X size={14} />
+          </button>
         </div>
 
         <label className="form-label">页码范围（如 all、1-5、1,3,5）</label>

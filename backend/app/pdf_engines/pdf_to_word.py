@@ -70,7 +70,6 @@ def run(task: Task, db) -> list[int]:
     now = datetime.now(UTC)
     output_name = build_output_filename(
         pdf_basename,
-        suffix="word",
         extension="docx",
         timestamp=now,
     )

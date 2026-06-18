@@ -91,7 +91,6 @@ def run(task: Task, db) -> list[int]:
 
         output_name = build_output_filename(
             original_name,
-            suffix=f"page_{idx + 1:03d}",
             extension="pdf",
             timestamp=now,
         )
@@ -120,7 +119,6 @@ def run(task: Task, db) -> list[int]:
 
                 entry_name = build_output_filename(
                     original_name,
-                    suffix=f"page_{idx + 1:03d}",
                     extension="pdf",
                     timestamp=now,
                 )
@@ -129,7 +127,6 @@ def run(task: Task, db) -> list[int]:
         zip_data = zip_buffer.getvalue()
         zip_name = build_output_filename(
             original_name,
-            suffix="split",
             extension="zip",
             timestamp=now,
         )

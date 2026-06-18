@@ -17,8 +17,14 @@ class TaskOutputFile(BaseModel):
     filename: str
 
 
+class TaskInputFile(BaseModel):
+    file_id: int
+    original_name: str
+
+
 class TaskResponse(BaseModel):
     task_id: int
+    task_name: str = ""
     status: str
     tool_type: str
     progress: float
@@ -36,8 +42,14 @@ class TaskResponse(BaseModel):
             return {}
         return v
     output_files: list[TaskOutputFile] = Field(default_factory=list)
+    input_files: list[TaskInputFile] = Field(default_factory=list)
     created_at: datetime | None
     started_at: datetime | None
     finished_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class TaskListResponse(BaseModel):
+    items: list[TaskResponse]
+    total: int

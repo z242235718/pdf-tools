@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Upload, Eye, Download } from 'lucide-react'
+import { Upload, Eye, Download, X } from 'lucide-react'
 import { uploadFile, createTask, getTask } from '../api/client'
 import type { TaskResponse } from '../types'
 
@@ -188,6 +188,22 @@ export default function WatermarkPdfPage() {
     setError('')
   }
 
+  const handleClearPdf = () => {
+    setPdfFile(null)
+    setPdfFileId(null)
+    setPreviewUrl(null)
+    setTask(null)
+    setError('')
+    if (pdfFileInputRef.current) pdfFileInputRef.current.value = ''
+  }
+
+  const handleClearWm = () => {
+    setWmImageFile(null)
+    setWmImageFileId(null)
+    setError('')
+    if (wmFileInputRef.current) wmFileInputRef.current.value = ''
+  }
+
   // ── Preview & Submit handlers ────────────────────────────────────────────
   const handlePreview = async () => {
     setError('')
@@ -339,25 +355,35 @@ export default function WatermarkPdfPage() {
 
         {/* PDF file input — drag & drop */}
         <label className="form-label">选择 PDF 文件</label>
-        <div
-          className={`drop-zone${isPdfDragging ? ' dragging' : ''}${pdfFile ? ' has-file' : ''}`}
-          onClick={handlePdfDropZoneClick}
-          onDragEnter={handlePdfDragEnter}
-          onDragOver={handlePdfDragOver}
-          onDragLeave={handlePdfDragLeave}
-          onDrop={handlePdfDrop}
-        >
-          <input
-            ref={pdfFileInputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={handlePdfFileChange}
-            hidden
-          />
-          <Upload size={24} className="drop-zone-icon" />
-          <span className="drop-zone-text">
-            {pdfFile ? pdfFile.name : '点击或拖拽 PDF 文件到此处'}
-          </span>
+        <div className="drop-zone-wrap">
+          <div
+            className={`drop-zone${isPdfDragging ? ' dragging' : ''}${pdfFile ? ' has-file' : ''}`}
+            onClick={handlePdfDropZoneClick}
+            onDragEnter={handlePdfDragEnter}
+            onDragOver={handlePdfDragOver}
+            onDragLeave={handlePdfDragLeave}
+            onDrop={handlePdfDrop}
+          >
+            <input
+              ref={pdfFileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handlePdfFileChange}
+              hidden
+            />
+            <Upload size={24} className="drop-zone-icon" />
+            <span className="drop-zone-text">
+              {pdfFile ? pdfFile.name : '点击或拖拽 PDF 文件到此处'}
+            </span>
+          </div>
+          <button
+            className={`drop-zone-remove${pdfFile ? ' visible' : ''}`}
+            onClick={handleClearPdf}
+            title="移除文件"
+            type="button"
+          >
+            <X size={14} />
+          </button>
         </div>
 
         {/* Text watermark controls */}
@@ -400,36 +426,46 @@ export default function WatermarkPdfPage() {
         {watermarkType === 'image' && (
           <>
             <label className="form-label">选择水印图片</label>
-            <div
-              className={`drop-zone${isWmDragging ? ' dragging' : ''}${wmImageFile ? ' has-file' : ''}`}
-              onClick={handleWmDropZoneClick}
-              onDragEnter={handleWmDragEnter}
-              onDragOver={handleWmDragOver}
-              onDragLeave={handleWmDragLeave}
-              onDrop={handleWmDrop}
-            >
-              <input
-                ref={wmFileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  setWmImageFile(e.target.files?.[0] ?? null)
-                  setWmImageFileId(null)
-                }}
-                hidden
-              />
-              <Upload size={24} className="drop-zone-icon" />
-              <span className="drop-zone-text">
-                {wmImageFile ? wmImageFile.name : '点击或拖拽图片文件到此处'}
-              </span>
+            <div className="drop-zone-wrap">
+              <div
+                className={`drop-zone${isWmDragging ? ' dragging' : ''}${wmImageFile ? ' has-file' : ''}`}
+                onClick={handleWmDropZoneClick}
+                onDragEnter={handleWmDragEnter}
+                onDragOver={handleWmDragOver}
+                onDragLeave={handleWmDragLeave}
+                onDrop={handleWmDrop}
+              >
+                <input
+                  ref={wmFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    setWmImageFile(e.target.files?.[0] ?? null)
+                    setWmImageFileId(null)
+                  }}
+                  hidden
+                />
+                <Upload size={24} className="drop-zone-icon" />
+                <span className="drop-zone-text">
+                  {wmImageFile ? wmImageFile.name : '点击或拖拽图片文件到此处'}
+                </span>
+              </div>
+              <button
+                className={`drop-zone-remove${wmImageFile ? ' visible' : ''}`}
+                onClick={handleClearWm}
+                title="移除图片"
+                type="button"
+              >
+                <X size={14} />
+              </button>
             </div>
 
             <div className="slider-row">
               <label className="form-label">缩放</label>
               <input
                 type="range"
-                min={0.1}
-                max={3.0}
+                min={0.01}
+                max={2.0}
                 step={0.05}
                 value={scale}
                 onChange={(e) => setScale(Number(e.target.value))}
@@ -484,8 +520,8 @@ export default function WatermarkPdfPage() {
             <label className="form-label">密度</label>
             <input
               type="range"
-              min={0.8}
-              max={4.0}
+              min={0.1}
+              max={2.0}
               step={0.1}
               value={tileSpacing}
               onChange={(e) => setTileSpacing(Number(e.target.value))}

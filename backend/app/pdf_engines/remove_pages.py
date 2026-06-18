@@ -95,7 +95,6 @@ def run(task: Task, db) -> list[int]:
     now = datetime.now(UTC)
     output_name = build_output_filename(
         original_name,
-        suffix="removed_pages",
         extension="pdf",
         timestamp=now,
     )

@@ -1,4 +1,4 @@
-import type { FileUploadResponse, TaskResponse, ToolType } from '../types'
+import type { FileUploadResponse, TaskListResponse, TaskResponse, ToolType } from '../types'
 
 const BASE = '/api'
 
@@ -37,13 +37,39 @@ export async function getTask(taskId: number): Promise<TaskResponse> {
   return handleResponse<TaskResponse>(res)
 }
 
-export async function listTasks(limit = 50, offset = 0): Promise<TaskResponse[]> {
-  const res = await fetch(`${BASE}/tasks?limit=${limit}&offset=${offset}`)
-  return handleResponse<TaskResponse[]>(res)
+export interface ListTasksParams {
+  limit?: number
+  offset?: number
+  task_name?: string
+  file_name?: string
+  status?: string
+  date_from?: string
+  date_to?: string
+}
+
+export async function listTasks(params: ListTasksParams = {}): Promise<TaskListResponse> {
+  const query = new URLSearchParams()
+  if (params.limit != null) query.set('limit', String(params.limit))
+  if (params.offset != null) query.set('offset', String(params.offset))
+  if (params.task_name) query.set('task_name', params.task_name)
+  if (params.file_name) query.set('file_name', params.file_name)
+  if (params.status) query.set('status', params.status)
+  if (params.date_from) query.set('date_from', params.date_from)
+  if (params.date_to) query.set('date_to', params.date_to)
+  const res = await fetch(`${BASE}/tasks?${query}`)
+  return handleResponse<TaskListResponse>(res)
 }
 
 export function getDownloadUrl(fileId: number): string {
   return `${BASE}/files/${fileId}/download`
+}
+
+export async function clearTasks(): Promise<void> {
+  const res = await fetch(`${BASE}/tasks`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail ?? `HTTP ${res.status}`)
+  }
 }
 
 export async function getSettings(): Promise<{ domain_url: string; password_length: number; qr_code_visible: boolean }> {

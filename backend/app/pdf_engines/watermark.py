@@ -38,7 +38,7 @@ _POSITIONS: dict[str, tuple[float, float]] = {
 
 _TILE_SPACING: dict[str, tuple[float, float]] = {
     "full":  (1.5, 2.0),
-    "dense": (1.2, 1.5),
+    "dense": (0.83, 0.67),
 }
 
 
@@ -97,7 +97,6 @@ def run(task: Task, db) -> list[int]:
     now = datetime.now(UTC)
     output_name = build_output_filename(
         original_name,
-        suffix="watermarked",
         extension="pdf",
         timestamp=now,
     )
@@ -253,12 +252,12 @@ def _calc_tile_positions(
     stagger = False
     y = start_y
     while y < ph + item_h:
-        offset_x = (sx * item_w * 0.5) if (tile_mode == "dense" and stagger) else 0
+        offset_x = (item_w * 0.5 / sx) if (tile_mode == "dense" and stagger) else 0
         x = start_x + offset_x
         while x < pw + item_w:
             positions.append((x, y))
-            x += item_w * sx
-        y += item_h * sy
+            x += item_w / sx
+        y += item_h / sy
         if tile_mode == "dense":
             stagger = not stagger
 

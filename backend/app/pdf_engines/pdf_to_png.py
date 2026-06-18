@@ -141,13 +141,9 @@ def run(task: Task, db) -> list[int]:
         png_bytes = pix.tobytes("png")
         output_name = build_output_filename(
             original_name,
-            suffix=f"page_{idx + 1:03d}",
             extension="png",
             timestamp=now,
         )
-
-        key = storage.generate_key()
-        storage.store_output(png_bytes, key)
 
         output_file = FileService.mark_output(
             db,
@@ -177,7 +173,6 @@ def run(task: Task, db) -> list[int]:
 
                 entry_name = build_output_filename(
                     original_name,
-                    suffix=f"page_{idx + 1:03d}",
                     extension="png",
                     timestamp=now,
                 )
@@ -187,7 +182,6 @@ def run(task: Task, db) -> list[int]:
 
         zip_name = build_output_filename(
             original_name,
-            suffix="png",
             extension="zip",
             timestamp=now,
         )

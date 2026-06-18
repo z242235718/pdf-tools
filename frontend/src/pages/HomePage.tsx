@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, FileImage, FileArchive, Scissors, Trash2, History, FileWarning, Shield, Search } from 'lucide-react'
+import {
+  FileText, FileImage, FileArchive, Scissors,
+  Trash2, History, FileWarning, Shield, Search,
+} from 'lucide-react'
 import { navItems } from '../components/Layout'
 
 const toolInfo: Record<string, { desc: string; icon: typeof FileText }> = {
@@ -86,7 +89,7 @@ export default function HomePage() {
                 ? '后端运行正常'
                 : '后端异常'}
           </span>
-          <span className="status-version">· v0.1 MVP</span>
+          <span className="status-version">· v0.2</span>
         </div>
         {healthTime && <span className="status-time">{healthTime}</span>}
       </div>

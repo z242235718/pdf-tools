@@ -20,7 +20,6 @@ def _sanitise(name: str) -> str:
 
 def build_output_filename(
     original_name: str,
-    suffix: str,
     extension: str,
     timestamp: datetime | None = None,
     extra: str | None = None,
@@ -29,18 +28,18 @@ def build_output_filename(
 
     Format (without *extra*)::
 
-        <sanitised_base>_<suffix>_<timestamp>.<extension>
+        output_<sanitised_base>_<timestamp>.<extension>
 
     Format (with *extra*)::
 
-        <sanitised_base>_<suffix>_<extra>_<timestamp>.<extension>
+        output_<sanitised_base>_<extra>_<timestamp>.<extension>
 
     Examples:
-        ``contract.pdf`` + ``word`` + ``docx``
-        → ``contract_word_20260613_153045.docx``
+        ``contract.pdf`` + ``pdf``
+        → ``output_contract_20260613_153045.pdf``
 
-        ``contract.pdf`` + ``page_001`` + ``png``
-        → ``contract_page_001_20260613_153045.png``
+        ``contract.pdf`` + ``pdf`` + fingerprint id
+        → ``output_contract_abc123_20260613_153045.pdf``
     """
     ts = timestamp or datetime.now()
     ts_str = ts.strftime("%Y%m%d_%H%M%S")
@@ -51,7 +50,7 @@ def build_output_filename(
 
     ext = extension.lstrip(".")
 
-    parts = [base, suffix]
+    parts = ["output", base]
     if extra:
         parts.append(extra)
     parts.append(ts_str)
