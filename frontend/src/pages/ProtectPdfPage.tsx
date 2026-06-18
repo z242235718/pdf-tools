@@ -224,7 +224,7 @@ export default function ProtectPdfPage() {
               下载受保护的 PDF
             </a>
           )}
-          {task.status === 'succeeded' && task.result_info?.password && (
+          {task.status === 'succeeded' && task.result_info?.password != null && (
             <div className="password-card">
               <p className="form-label">打开密码</p>
               <p className="password-value">

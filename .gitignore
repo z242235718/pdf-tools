@@ -3,6 +3,8 @@ backend/.venv/
 backend/.pytest_cache/
 backend/.ruff_cache/
 backend/pdf_tools.db
+backend/build/
+backend/dist/
 __pycache__/
 *.py[cod]
 
@@ -28,3 +30,7 @@ backend/.env
 !storage/uploads/.gitkeep
 !storage/outputs/.gitkeep
 !storage/tmp/.gitkeep
+
+
+#dist
+RELEASE/
