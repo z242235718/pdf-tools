@@ -11,6 +11,13 @@ export default function SplitPdfPage() {
   const [error, setError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const outputFile = task?.output_files[0]
+  const outputFilename = outputFile?.filename.toLowerCase() ?? ''
+  const downloadLabel = outputFilename.endsWith('.zip')
+    ? '下载 ZIP'
+    : outputFilename.endsWith('.pdf')
+      ? '下载 PDF'
+      : '下载结果'
 
   const handleDropZoneClick = () => fileInputRef.current?.click()
 
@@ -73,7 +80,7 @@ export default function SplitPdfPage() {
   return (
     <section className="page">
       <h1>PDF 按页拆分</h1>
-      <p className="text-muted">按页码或页码范围拆分 PDF，每页输出一个独立的 PDF 文件并打包为 ZIP。</p>
+      <p className="text-muted">按页码或页码范围拆分 PDF，单页选择时直接输出 PDF，多页选择时打包为 ZIP。</p>
 
       <div className="form-card">
         <label className="form-label">选择 PDF 文件</label>
@@ -121,9 +128,9 @@ export default function SplitPdfPage() {
       {task && (
         <div className="result-card">
           <p>状态：{task.status}</p>
-          {task.status === 'succeeded' && task.output_files.length > 0 && (
-            <a href={`/api/files/${task.output_files[0].file_id}/download`} className="btn" download>
-              下载 ZIP
+          {task.status === 'succeeded' && outputFile && (
+            <a href={`/api/files/${outputFile.file_id}/download`} className="btn" download>
+              {downloadLabel}
             </a>
           )}
         </div>

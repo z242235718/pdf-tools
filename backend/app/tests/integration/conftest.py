@@ -54,6 +54,7 @@ def _setup_db() -> Generator:
     import app.pdf_engines.watermark
     import app.pdf_engines.pdf_to_word
     import app.pdf_engines.protect_pdf
+    import app.pdf_engines.split_pdf
     import app.services.file_service
     import app.services.task_service
     import app.workers.task_runner
@@ -62,6 +63,7 @@ def _setup_db() -> Generator:
     app.pdf_engines.watermark.SessionLocal = TestSession
     app.pdf_engines.pdf_to_word.SessionLocal = TestSession
     app.pdf_engines.protect_pdf.SessionLocal = TestSession
+    app.pdf_engines.split_pdf.SessionLocal = TestSession
     app.services.file_service.SessionLocal = TestSession
     app.services.task_service.SessionLocal = TestSession
     app.workers.task_runner.SessionLocal = TestSession

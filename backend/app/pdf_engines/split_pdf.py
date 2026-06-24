@@ -93,6 +93,7 @@ def run(task: Task, db) -> list[int]:
             original_name,
             extension="pdf",
             timestamp=now,
+            extra=f"page_{idx + 1:03d}",
         )
 
         key = storage.generate_key()
@@ -121,6 +122,7 @@ def run(task: Task, db) -> list[int]:
                     original_name,
                     extension="pdf",
                     timestamp=now,
+                    extra=f"page_{idx + 1:03d}",
                 )
                 zf.writestr(entry_name, page_bytes.getvalue())
 
@@ -129,6 +131,7 @@ def run(task: Task, db) -> list[int]:
             original_name,
             extension="zip",
             timestamp=now,
+            extra="split",
         )
 
         key = storage.generate_key()
